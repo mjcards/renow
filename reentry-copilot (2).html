@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<title>Renow</title>
+
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    background: #0f1115;
+    color: #e8e8e8;
+  }
+
+  .wrap {
+    padding: 16px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 20px;
+    margin: 12px 0;
+  }
+
+  .card {
+    background: #1a1f2b;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .stateGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .state {
+    padding: 14px;
+    border-radius: 12px;
+    background: #2a2f3d;
+    font-size: 15px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  .state.active {
+    background: #2d6cdf;
+  }
+
+  textarea {
+    width: 100%;
+    height: 90px;
+    border-radius: 12px;
+    border: none;
+    padding: 10px;
+    background: #111522;
+    color: white;
+    font-size: 14px;
+    resize: none;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    margin-top: 10px;
+    font-size: 15px;
+    background: #2d6cdf;
+    color: white;
+    cursor: pointer;
+  }
+
+  button.secondary {
+    background: #444;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .visual {
+    font-size: 15px;
+    opacity: 0.9;
+    line-height: 1.6;
+    min-height: 24px;
+  }
+
+  .action {
+    background: #222838;
+    padding: 12px;
+    border-radius: 12px;
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .small {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+
+  .sticky {
+    position: sticky;
+    bottom: 0;
+    background: #0f1115;
+    padding-top: 10px;
+  }
+
+  #keyScreen {
+    position: fixed;
+    inset: 0;
+    background: #0f1115;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    z-index: 100;
+  }
+
+  #keyScreen h2 {
+    font-size: 18px;
+    margin: 0 0 8px;
+  }
+
+  #keyScreen p {
+    font-size: 13px;
+    opacity: 0.6;
+    text-align: center;
+    margin: 0 0 20px;
+    line-height: 1.5;
+  }
+
+  #keyScreen input {
+    width: 100%;
+    max-width: 400px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    background: #111522;
+    color: white;
+    font-size: 14px;
+    font-family: monospace;
+    margin-bottom: 12px;
+  }
+
+  #keyScreen button {
+    max-width: 400px;
+  }
+
+  .key-reset {
+    font-size: 11px;
+    opacity: 0.4;
+    text-align: right;
+    cursor: pointer;
+    margin-top: -4px;
+    margin-bottom: 8px;
+  }
+
+  .key-reset:hover { opacity: 0.7; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .stream-cursor::after {
+    content: '▋';
+    animation: blink 0.8s step-end infinite;
+    opacity: 0.7;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+
+<body>
+<div id="keyScreen">
+  <h2 style="font-size:24px;margin:0 0 4px;">Renow</h2>
+  <p style="font-size:12px;opacity:0.5;margin:0 0 10px;letter-spacing:0.05em;">NEURO FRIENDLY GSD</p>
+  <p style="font-size:13px;opacity:0.6;text-align:center;margin:0 0 24px;line-height:1.6;max-width:320px;">Renow helps you re-enter focused work from any mental state. Pick how you feel, dump what's on your mind, and get clear next actions — powered by AI, stored only on your device.</p>
+  <p style="font-size:13px;opacity:0.5;text-align:center;margin:0 0 12px;">Paste your Anthropic API key to get started.</p>
+  <input id="keyInput" type="password" placeholder="sk-ant-..." autocomplete="off" />
+  <button onclick="saveKey()">Save &amp; continue</button>
+</div>
+
+<div class="wrap">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;">
+    <div>
+      <h1 style="margin:0;font-size:22px;">Renow</h1>
+      <div style="font-size:11px;opacity:0.4;letter-spacing:0.06em;margin-top:2px;">NEURO FRIENDLY GSD</div>
+    </div>
+    <span class="key-reset" onclick="resetKey()">reset key</span>
+  </div>
+
+  <div class="card">
+    <div class="small">How are you right now?</div>
+    <div class="stateGrid">
+      <div class="state" onclick="setState('ready', event)">⚡ Ready to get things done</div>
+      <div class="state" onclick="setState('anxious', event)">😬 Behind / anxious</div>
+      <div class="state" onclick="setState('low', event)">🌿 Low energy</div>
+      <div class="state" onclick="setState('curious', event)">💡 Curious / exploring</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="visual stream-cursor" id="visual">Select a state to begin re-entry.</div>
+  </div>
+
+  <div class="card">
+    <div class="small">What's on your mind?</div>
+    <textarea id="noteInput" placeholder="Dump everything here..."></textarea>
+    <div class="sticky">
+      <button onclick="saveNote()">Save</button>
+      <button class="secondary" id="ingestBtn" onclick="ingestNotes()">Turn into actions</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="small">Next actions</div>
+    <div id="actions"></div>
+  </div>
+
+  <div class="card">
+    <button class="secondary" onclick="showNotes()">View notes</button>
+    <div id="notes"></div>
+  </div>
+
+</div>
+
+<script>
+
+let state = null;
+let streaming = false;
+
+// ── Claude API helpers ──────────────────────────────────────────────────────
+
+async function claudeStream(systemPrompt, userMessage, onChunk, onDone) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": getKey(),
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      stream: true,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }]
+    })
+  });
+
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") continue;
+      try {
+        const evt = JSON.parse(data);
+        if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+          onChunk(evt.delta.text);
+        }
+      } catch {}
+    }
+  }
+
+  onDone();
+}
+
+async function claudeJSON(systemPrompt, userMessage) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": getKey(),
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }]
+    })
+  });
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  const data = await resp.json();
+  const text = data.content.map(b => b.text || "").join("").trim();
+  const clean = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}
+
+// ── State & visual ──────────────────────────────────────────────────────────
+
+const STATE_LABELS = {
+  ready:   "⚡ Ready to get things done",
+  anxious: "😬 Behind / anxious",
+  low:     "🌿 Low energy",
+  curious: "💡 Curious / exploring"
+};
+
+async function setState(s, e) {
+  state = s;
+  localStorage.setItem("state", s);
+
+  document.querySelectorAll(".state").forEach(el => el.classList.remove("active"));
+  if (e) e.target.classList.add("active");
+
+  await generateVisual();
+}
+
+async function generateVisual() {
+  if (!state) return;
+
+  const el = document.getElementById("visual");
+  el.classList.add("stream-cursor");
+  el.textContent = "";
+
+  const system = `You are a calm, clear-headed productivity copilot helping someone re-enter focused work.
+Give a single short paragraph (2-3 sentences max) of grounded, honest framing for their current mental state.
+No fluff, no cheerleading. Speak directly, like a trusted colleague.`;
+
+  const user = `The person's current state is: "${STATE_LABELS[state]}". Give them a short, honest re-entry frame.`;
+
+  try {
+    await claudeStream(system, user,
+      chunk => { el.textContent += chunk; },
+      () => { el.classList.remove("stream-cursor"); }
+    );
+  } catch (err) {
+    el.classList.remove("stream-cursor");
+    el.textContent = getFallbackVisual(state);
+  }
+}
+
+function getFallbackVisual(s) {
+  if (s === "low")     return "Slow mode. One small action is enough.";
+  if (s === "anxious") return "You're not behind—you're re-entering. One step only.";
+  if (s === "ready")   return "High clarity window. Execute, don't plan.";
+  if (s === "curious") return "Explore lightly. Don't commit yet.";
+  return "";
+}
+
+// ── Notes ───────────────────────────────────────────────────────────────────
+
+function saveNote() {
+  const text = document.getElementById("noteInput").value.trim();
+  if (!text) return;
+
+  const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  notes.push({ text, date: new Date().toISOString() });
+  localStorage.setItem("notes", JSON.stringify(notes));
+  document.getElementById("noteInput").value = "";
+}
+
+function showNotes() {
+  const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  const el = document.getElementById("notes");
+  el.innerHTML = "";
+  notes.slice(-5).reverse().forEach(n => {
+    const div = document.createElement("div");
+    div.className = "action";
+    div.textContent = n.text;
+    el.appendChild(div);
+  });
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+
+async function ingestNotes() {
+  if (streaming) return;
+
+  const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  const combined = notes.map(n => n.text).join("\n\n").trim();
+
+  const actionsEl = document.getElementById("actions");
+  const btn = document.getElementById("ingestBtn");
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Thinking…';
+  actionsEl.innerHTML = "";
+
+  const system = `You are a calm, practical productivity copilot helping someone re-enter focused work.
+Based on their mental state and brain-dump notes, generate 3-5 concrete, specific next actions.
+Each action should be small and immediately doable — not a project, just the next physical step.
+Respond ONLY with a valid JSON array of strings. No markdown, no preamble. Example:
+["Reply to Sarah's message about the deadline","Open the project folder and read last saved note","Set a 10-minute timer and write one paragraph"]`;
+
+  const userParts = [
+    `Current state: "${STATE_LABELS[state] || "unknown"}"`,
+    combined ? `Brain dump:\n${combined}` : "(no notes saved yet)"
+  ];
+
+  try {
+    const actions = await claudeJSON(system, userParts.join("\n\n"));
+    localStorage.setItem("actions", JSON.stringify(actions));
+    renderActions(actions);
+  } catch (err) {
+    // fallback
+    const fallback = getFallbackActions(state, combined);
+    renderActions(fallback);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Turn into actions";
+}
+
+function getFallbackActions(s, combined) {
+  const actions = [];
+  if (s === "anxious") actions.push("Do a 2-minute reset (water / walk / breathe)");
+  if (s === "low")     actions.push("Stand up and do ONE physical action");
+  if (combined && (combined.includes("email") || combined.includes("reply")))
+    actions.push("Reply to ONE message (not all)");
+  if (combined && (combined.includes("work") || combined.includes("project")))
+    actions.push("Open project → define next step only");
+  if (s === "ready")   actions.push("Pick highest impact task and start 5-minute sprint");
+  return actions.length ? actions : ["Do the smallest possible useful thing"];
+}
+
+function renderActions(actions) {
+  const el = document.getElementById("actions");
+  el.innerHTML = "";
+  actions.forEach(a => {
+    const div = document.createElement("div");
+    div.className = "action";
+    div.textContent = a;
+    el.appendChild(div);
+  });
+}
+
+// ── API Key ──────────────────────────────────────────────────────────────────
+
+function getKey() {
+  return localStorage.getItem("anthropic_key") || "";
+}
+
+function saveKey() {
+  const key = document.getElementById("keyInput").value.trim();
+  if (!key.startsWith("sk-")) {
+    alert("That doesn't look right — key should start with sk-ant-...");
+    return;
+  }
+  localStorage.setItem("anthropic_key", key);
+  document.getElementById("keyScreen").style.display = "none";
+}
+
+function resetKey() {
+  localStorage.removeItem("anthropic_key");
+  document.getElementById("keyInput").value = "";
+  document.getElementById("keyScreen").style.display = "flex";
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+state = localStorage.getItem("state");
+
+if (!getKey()) {
+  document.getElementById("keyScreen").style.display = "flex";
+} else {
+  document.getElementById("keyScreen").style.display = "none";
+  if (state) {
+    document.querySelectorAll(".state").forEach(el => {
+      if (el.textContent.trim() === STATE_LABELS[state]) el.classList.add("active");
+    });
+    generateVisual();
+  }
+  const savedActions = JSON.parse(localStorage.getItem("actions") || "[]");
+  if (savedActions.length) renderActions(savedActions);
+}
+
+</script>
+</body>
+</html>
