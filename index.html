@@ -100,6 +100,52 @@
     margin-top: 10px;
     font-size: 14px;
     line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .action-text {
+    flex: 1;
+    padding-top: 1px;
+  }
+
+  .action input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    margin: 0;
+    accent-color: #2d6cdf;
+    cursor: pointer;
+  }
+
+  .action .not-now {
+    font-size: 11px;
+    opacity: 0.4;
+    cursor: pointer;
+    white-space: nowrap;
+    padding-top: 3px;
+    user-select: none;
+  }
+
+  .action .not-now:hover { opacity: 0.7; }
+
+  .done-item {
+    background: #1a1f2b;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #888;
+    text-decoration: line-through;
+  }
+
+  .done-date {
+    font-size: 11px;
+    opacity: 0.4;
+    margin-top: 2px;
+    text-decoration: none;
+    display: block;
   }
 
   .small {
@@ -242,6 +288,22 @@
   <div class="card">
     <div class="small">Next actions</div>
     <div id="actions"></div>
+  </div>
+
+  <div class="card">
+    <div class="small">Current tasks</div>
+    <div id="currentTasks"></div>
+    <div id="noCurrentTasks" style="font-size:13px;opacity:0.4;margin-top:8px;display:none;">No pending tasks.</div>
+  </div>
+
+  <div class="card">
+    <button class="secondary" onclick="toggleDone()">View done</button>
+    <div id="doneList" style="display:none;margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <button class="secondary" onclick="toggleNotNow()">Revow 'not now' items</button>
+    <div id="notNowList" style="display:none;margin-top:10px;"></div>
   </div>
 
   <div class="card">
@@ -456,13 +518,196 @@ function getFallbackActions(s, combined) {
   return actions.length ? actions : ["Do the smallest possible useful thing"];
 }
 
+// ── Task management ───────────────────────────────────────────────────────────
+
+function getTasks() {
+  return JSON.parse(localStorage.getItem("currentTasks") || "[]");
+}
+
+function saveTasks(tasks) {
+  localStorage.setItem("currentTasks", JSON.stringify(tasks));
+}
+
+function getDone() {
+  return JSON.parse(localStorage.getItem("doneTasks") || "[]");
+}
+
+function saveDone(done) {
+  localStorage.setItem("doneTasks", JSON.stringify(done));
+}
+
+function addTasksFromActions(actions) {
+  const existing = getTasks();
+  const existingTexts = existing.map(t => t.text);
+  const newTasks = actions
+    .filter(a => !existingTexts.includes(a))
+    .map(a => ({ id: Date.now() + Math.random(), text: a, added: new Date().toISOString() }));
+  saveTasks([...existing, ...newTasks]);
+  renderCurrentTasks();
+}
+
+function markDone(id) {
+  const tasks = getTasks();
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  saveTasks(tasks.filter(t => t.id !== id));
+  const done = getDone();
+  done.unshift({ ...task, doneAt: new Date().toISOString() });
+  saveDone(done);
+  renderCurrentTasks();
+  renderDoneList();
+}
+
+function getNotNow() {
+  return JSON.parse(localStorage.getItem("notNowTasks") || "[]");
+}
+
+function saveNotNow(items) {
+  localStorage.setItem("notNowTasks", JSON.stringify(items));
+}
+
+function markNotNow(id) {
+  const tasks = getTasks();
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  saveTasks(tasks.filter(t => t.id !== id));
+  const notNow = getNotNow();
+  notNow.unshift({ ...task, snoozedAt: new Date().toISOString() });
+  saveNotNow(notNow);
+  renderCurrentTasks();
+  if (notNowVisible) renderNotNowList();
+}
+
+function restoreNotNow(id) {
+  const notNow = getNotNow();
+  const task = notNow.find(t => t.id === id);
+  if (!task) return;
+  saveNotNow(notNow.filter(t => t.id !== id));
+  const tasks = getTasks();
+  tasks.push({ id: task.id, text: task.text, added: task.added });
+  saveTasks(tasks);
+  renderCurrentTasks();
+  renderNotNowList();
+}
+
+let notNowVisible = false;
+function toggleNotNow() {
+  notNowVisible = !notNowVisible;
+  const el = document.getElementById("notNowList");
+  el.style.display = notNowVisible ? "block" : "none";
+  document.querySelector("[onclick='toggleNotNow()']").textContent = notNowVisible ? "Hide 'not now' items" : "Revow 'not now' items";
+  if (notNowVisible) renderNotNowList();
+}
+
+function renderNotNowList() {
+  const items = getNotNow();
+  const el = document.getElementById("notNowList");
+  el.innerHTML = "";
+  if (items.length === 0) {
+    el.innerHTML = '<div style="font-size:13px;opacity:0.4;margin-top:8px;">Nothing snoozed.</div>';
+    return;
+  }
+  items.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "action";
+
+    const span = document.createElement("span");
+    span.className = "action-text";
+    span.textContent = task.text;
+    span.style.opacity = "0.6";
+
+    const restore = document.createElement("span");
+    restore.className = "not-now";
+    restore.textContent = "revow";
+    restore.style.color = "#2d6cdf";
+    restore.style.opacity = "0.8";
+    restore.onclick = () => restoreNotNow(task.id);
+
+    div.appendChild(span);
+    div.appendChild(restore);
+    el.appendChild(div);
+  });
+}
+
+function renderCurrentTasks() {
+  const tasks = getTasks();
+  const el = document.getElementById("currentTasks");
+  const empty = document.getElementById("noCurrentTasks");
+  el.innerHTML = "";
+
+  if (tasks.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  tasks.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "action";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.onchange = () => markDone(task.id);
+
+    const span = document.createElement("span");
+    span.className = "action-text";
+    span.textContent = task.text;
+
+    const nn = document.createElement("span");
+    nn.className = "not-now";
+    nn.textContent = "not now";
+    nn.onclick = () => markNotNow(task.id);
+
+    div.appendChild(cb);
+    div.appendChild(span);
+    div.appendChild(nn);
+    el.appendChild(div);
+  });
+}
+
+function renderDoneList() {
+  const done = getDone();
+  const el = document.getElementById("doneList");
+  el.innerHTML = "";
+  if (done.length === 0) {
+    el.innerHTML = '<div style="font-size:13px;opacity:0.4;margin-top:8px;">Nothing done yet.</div>';
+    return;
+  }
+  done.slice(0, 20).forEach(task => {
+    const div = document.createElement("div");
+    div.className = "done-item";
+    div.textContent = task.text;
+    const date = document.createElement("span");
+    date.className = "done-date";
+    date.textContent = new Date(task.doneAt).toLocaleString();
+    div.appendChild(date);
+    el.appendChild(div);
+  });
+}
+
+let doneVisible = false;
+function toggleDone() {
+  doneVisible = !doneVisible;
+  const el = document.getElementById("doneList");
+  el.style.display = doneVisible ? "block" : "none";
+  document.querySelector("[onclick='toggleDone()']").textContent = doneVisible ? "Hide done" : "View done";
+  if (doneVisible) renderDoneList();
+}
+
 function renderActions(actions) {
+  // Add newly generated actions to the persistent current tasks list
+  addTasksFromActions(actions);
+
+  // Also show them in the "Next actions" card as a preview
   const el = document.getElementById("actions");
   el.innerHTML = "";
   actions.forEach(a => {
     const div = document.createElement("div");
     div.className = "action";
-    div.textContent = a;
+    const span = document.createElement("span");
+    span.className = "action-text";
+    span.textContent = a;
+    div.appendChild(span);
     el.appendChild(div);
   });
 }
@@ -505,6 +750,7 @@ if (!getKey()) {
   }
   const savedActions = JSON.parse(localStorage.getItem("actions") || "[]");
   if (savedActions.length) renderActions(savedActions);
+  renderCurrentTasks();
 }
 
 </script>
