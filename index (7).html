@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<title>Renow</title>
+
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    background: #0f1115;
+    color: #e8e8e8;
+  }
+
+  .wrap {
+    padding: 16px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 20px;
+    margin: 12px 0;
+  }
+
+  .card {
+    background: #1a1f2b;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .stateGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .state {
+    padding: 14px;
+    border-radius: 12px;
+    background: #2a2f3d;
+    font-size: 15px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  .state.active {
+    background: #2d6cdf;
+  }
+
+  textarea {
+    width: 100%;
+    height: 90px;
+    border-radius: 12px;
+    border: none;
+    padding: 10px;
+    background: #111522;
+    color: white;
+    font-size: 14px;
+    resize: none;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    margin-top: 10px;
+    font-size: 15px;
+    background: #2d6cdf;
+    color: white;
+    cursor: pointer;
+  }
+
+  button.secondary {
+    background: #444;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .visual {
+    font-size: 15px;
+    opacity: 0.9;
+    line-height: 1.6;
+    min-height: 24px;
+  }
+
+  /* ── Task cards ── */
+  .task-card {
+    padding: 13px 14px;
+    border-radius: 13px;
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .task-card:active { transform: scale(0.98); }
+
+  /* Variant A – bold left border, recessed */
+  .tv-a {
+    background: #1c2133;
+    border-left: 4px solid var(--accent, #2d6cdf);
+    box-shadow: inset 0 1px 6px rgba(0,0,0,0.4);
+    font-weight: 500;
+  }
+
+  /* Variant B – glassy raised */
+  .tv-b {
+    background: #252d42;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.35);
+    border-radius: 16px;
+    font-style: italic;
+    letter-spacing: 0.01em;
+  }
+
+  /* Variant C – soft tinted, small caps label */
+  .tv-c {
+    background: color-mix(in srgb, var(--accent, #2d6cdf) 12%, #1a1f2b);
+    border: 1px solid color-mix(in srgb, var(--accent, #2d6cdf) 25%, transparent);
+    font-size: 13.5px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Variant D – monospace, terminal-ish */
+  .tv-d {
+    background: #111622;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    border: 1px solid #2a3040;
+    border-radius: 10px;
+    color: color-mix(in srgb, var(--accent, #2d6cdf) 70%, #e8e8e8);
+  }
+
+  /* Variant E – wide pill, centred accent */
+  .tv-e {
+    background: linear-gradient(135deg, #1e2538, #252d42);
+    border-radius: 20px;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .task-text {
+    flex: 1;
+    padding-top: 1px;
+  }
+
+  .task-card input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    margin: 0;
+    accent-color: var(--accent, #2d6cdf);
+    cursor: pointer;
+  }
+
+  .task-card .not-now {
+    font-size: 11px;
+    opacity: 0.35;
+    cursor: pointer;
+    white-space: nowrap;
+    padding-top: 3px;
+    user-select: none;
+    font-family: -apple-system, sans-serif;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .task-card .not-now:hover { opacity: 0.7; }
+
+  /* mood accent tokens */
+  body.mood-ready   { --accent: #2d6cdf; --accent2: #4a9eff; }
+  body.mood-anxious { --accent: #e05a3a; --accent2: #ff8c6e; }
+  body.mood-low     { --accent: #3aaa6e; --accent2: #5dd696; }
+  body.mood-curious { --accent: #a855f7; --accent2: #d08ef5; }
+
+  .action {
+    background: #222838;
+    padding: 12px;
+    border-radius: 12px;
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .action-text { flex: 1; padding-top: 1px; }
+
+  .done-item {
+    background: #1a1f2b;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #888;
+    text-decoration: line-through;
+  }
+
+  .done-date {
+    font-size: 11px;
+    opacity: 0.4;
+    margin-top: 2px;
+    text-decoration: none;
+    display: block;
+  }
+
+  .small {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+
+  .sticky {
+    position: sticky;
+    bottom: 0;
+    background: #0f1115;
+    padding-top: 10px;
+  }
+
+  #keyScreen {
+    position: fixed;
+    inset: 0;
+    background: #0f1115;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    z-index: 100;
+  }
+
+  #keyScreen h2 {
+    font-size: 18px;
+    margin: 0 0 8px;
+  }
+
+  #keyScreen p {
+    font-size: 13px;
+    opacity: 0.6;
+    text-align: center;
+    margin: 0 0 20px;
+    line-height: 1.5;
+  }
+
+  #keyScreen input {
+    width: 100%;
+    max-width: 400px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    background: #111522;
+    color: white;
+    font-size: 14px;
+    font-family: monospace;
+    margin-bottom: 12px;
+  }
+
+  #keyScreen button {
+    max-width: 400px;
+  }
+
+  .key-reset {
+    font-size: 11px;
+    opacity: 0.4;
+    text-align: right;
+    cursor: pointer;
+    margin-top: -4px;
+    margin-bottom: 8px;
+  }
+
+  .key-reset:hover { opacity: 0.7; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .stream-cursor::after {
+    content: '▋';
+    animation: blink 0.8s step-end infinite;
+    opacity: 0.7;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+
+<body>
+<div id="keyScreen">
+  <h2 style="font-size:24px;margin:0 0 4px;">Renow</h2>
+  <p style="font-size:12px;opacity:0.5;margin:0 0 10px;letter-spacing:0.05em;">NEURO FRIENDLY GSD</p>
+  <p style="font-size:13px;opacity:0.6;text-align:center;margin:0 0 24px;line-height:1.6;max-width:320px;">Renow helps you re-enter focused work from any mental state. Pick how you feel, dump what's on your mind, and get clear next actions — powered by AI, stored only on your device.</p>
+  <p style="font-size:13px;opacity:0.5;text-align:center;margin:0 0 12px;">Paste your Anthropic API key to get started.</p>
+  <input id="keyInput" type="password" placeholder="sk-ant-..." autocomplete="off" />
+  <button onclick="saveKey()">Save &amp; continue</button>
+</div>
+
+<div class="wrap">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 4px;">
+    <div>
+      <h1 style="margin:0;font-size:22px;">Renow</h1>
+      <div style="font-size:11px;opacity:0.4;letter-spacing:0.06em;margin-top:2px;">NEURO FRIENDLY GSD</div>
+    </div>
+    <span class="key-reset" onclick="resetKey()">reset key</span>
+  </div>
+
+  <div class="card">
+    <div class="small">How are you right now?</div>
+    <div class="stateGrid">
+      <div class="state" onclick="setState('ready', event)">⚡ Ready to get things done</div>
+      <div class="state" onclick="setState('anxious', event)">😬 Behind / anxious</div>
+      <div class="state" onclick="setState('low', event)">🌿 Low energy</div>
+      <div class="state" onclick="setState('curious', event)">💡 Curious / exploring</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="visual stream-cursor" id="visual">Select a state to begin re-entry.</div>
+  </div>
+
+  <div class="card">
+    <div class="small">What's on your mind?</div>
+    <textarea id="noteInput" placeholder="Dump everything here..."></textarea>
+    <div class="sticky">
+      <button onclick="saveNote()">Save</button>
+      <button class="secondary" id="ingestBtn" onclick="ingestNotes()">Turn into actions</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="small">Current tasks</div>
+    <div id="currentTasks"></div>
+    <div id="noCurrentTasks" style="font-size:13px;opacity:0.4;margin-top:8px;display:none;">No pending tasks.</div>
+  </div>
+
+  <div class="card">
+    <button class="secondary" onclick="toggleDone()">View done</button>
+    <div id="doneList" style="display:none;margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <button class="secondary" onclick="toggleNotNow()">Revow 'not now' items</button>
+    <div id="notNowList" style="display:none;margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <button class="secondary" onclick="showNotes()">View notes</button>
+    <div id="notes"></div>
+  </div>
+
+</div>
+
+<script>
+
+let state = null;
+let streaming = false;
+
+// ── Claude API helpers ──────────────────────────────────────────────────────
+
+async function claudeStream(systemPrompt, userMessage, onChunk, onDone) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": getKey(),
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      stream: true,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }]
+    })
+  });
+
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") continue;
+      try {
+        const evt = JSON.parse(data);
+        if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+          onChunk(evt.delta.text);
+        }
+      } catch {}
+    }
+  }
+
+  onDone();
+}
+
+async function claudeJSON(systemPrompt, userMessage) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": getKey(),
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }]
+    })
+  });
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  const data = await resp.json();
+  const text = data.content.map(b => b.text || "").join("").trim();
+  const clean = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}
+
+// ── State & visual ──────────────────────────────────────────────────────────
+
+const STATE_LABELS = {
+  ready:   "⚡ Ready to get things done",
+  anxious: "😬 Behind / anxious",
+  low:     "🌿 Low energy",
+  curious: "💡 Curious / exploring"
+};
+
+async function setState(s, e) {
+  state = s;
+  localStorage.setItem("state", s);
+
+  document.querySelectorAll(".state").forEach(el => el.classList.remove("active"));
+  if (e) e.target.classList.add("active");
+
+  // Apply mood class
+  document.body.className = 'mood-' + s;
+  renderCurrentTasks();
+
+  await generateVisual();
+}
+
+async function generateVisual() {
+  if (!state) return;
+
+  const el = document.getElementById("visual");
+  el.classList.add("stream-cursor");
+  el.textContent = "";
+
+  const system = `You are a calm, clear-headed productivity copilot helping someone re-enter focused work.
+Give a single short paragraph (2-3 sentences max) of grounded, honest framing for their current mental state.
+No fluff, no cheerleading. Speak directly, like a trusted colleague.`;
+
+  const user = `The person's current state is: "${STATE_LABELS[state]}". Give them a short, honest re-entry frame.`;
+
+  try {
+    await claudeStream(system, user,
+      chunk => { el.textContent += chunk; },
+      () => { el.classList.remove("stream-cursor"); }
+    );
+  } catch (err) {
+    el.textContent = getFallbackVisual(state);
+  } finally {
+    el.classList.remove("stream-cursor");
+  }
+}
+
+function getFallbackVisual(s) {
+  if (s === "low")     return "Slow mode. One small action is enough.";
+  if (s === "anxious") return "You're not behind—you're re-entering. One step only.";
+  if (s === "ready")   return "High clarity window. Execute, don't plan.";
+  if (s === "curious") return "Explore lightly. Don't commit yet.";
+  return "";
+}
+
+// ── Notes ───────────────────────────────────────────────────────────────────
+
+function saveNote() {
+  const text = document.getElementById("noteInput").value.trim();
+  if (!text) return;
+
+  const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  notes.push({ text, date: new Date().toISOString() });
+  localStorage.setItem("notes", JSON.stringify(notes));
+  document.getElementById("noteInput").value = "";
+}
+
+function showNotes() {
+  const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  const el = document.getElementById("notes");
+  el.innerHTML = "";
+  notes.slice(-5).reverse().forEach(n => {
+    const div = document.createElement("div");
+    div.className = "action";
+    div.textContent = n.text;
+    el.appendChild(div);
+  });
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+
+async function ingestNotes() {
+  if (streaming) return;
+  streaming = true;
+
+  const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  const latest = notes.length ? notes[notes.length - 1].text : "";
+
+  const btn = document.getElementById("ingestBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Thinking…';
+
+  const system = `You are a calm, practical productivity copilot helping someone re-enter focused work.
+Based on their mental state and the note they just wrote, generate 3-5 concrete, specific next actions.
+Each action should be small and immediately doable — not a project, just the next physical step.
+Respond ONLY with a valid JSON array of strings. No markdown, no preamble. Example:
+["Reply to Sarah's message about the deadline","Open the project folder and read last saved note","Set a 10-minute timer and write one paragraph"]`;
+
+  const userParts = [
+    `Current state: "${STATE_LABELS[state] || "unknown"}"`,
+    latest ? `Latest note:\n${latest}` : "(no note saved yet — generate state-appropriate actions)"
+  ];
+
+  try {
+    const actions = await claudeJSON(system, userParts.join("\n\n"));
+    localStorage.setItem("actions", JSON.stringify(actions));
+    renderActions(actions);
+  } catch (err) {
+    console.error("ingestNotes error:", err);
+    const fallback = getFallbackActions(state, latest);
+    renderActions(fallback);
+  } finally {
+    streaming = false;
+    btn.disabled = false;
+    btn.textContent = "Turn into actions";
+  }
+}
+
+function getFallbackActions(s, combined) {
+  const actions = [];
+  if (s === "anxious") actions.push("Do a 2-minute reset (water / walk / breathe)");
+  if (s === "low")     actions.push("Stand up and do ONE physical action");
+  if (combined && (combined.includes("email") || combined.includes("reply")))
+    actions.push("Reply to ONE message (not all)");
+  if (combined && (combined.includes("work") || combined.includes("project")))
+    actions.push("Open project → define next step only");
+  if (s === "ready")   actions.push("Pick highest impact task and start 5-minute sprint");
+  return actions.length ? actions : ["Do the smallest possible useful thing"];
+}
+
+// ── Task management ───────────────────────────────────────────────────────────
+
+function getTasks() {
+  return JSON.parse(localStorage.getItem("currentTasks") || "[]");
+}
+
+function saveTasks(tasks) {
+  localStorage.setItem("currentTasks", JSON.stringify(tasks));
+}
+
+function getDone() {
+  return JSON.parse(localStorage.getItem("doneTasks") || "[]");
+}
+
+function saveDone(done) {
+  localStorage.setItem("doneTasks", JSON.stringify(done));
+}
+
+function addTasksFromActions(actions) {
+  const existing = getTasks();
+  const existingTexts = existing.map(t => t.text);
+  const newTasks = actions
+    .filter(a => !existingTexts.includes(a))
+    .map(a => ({ id: Date.now() + Math.random(), text: a, added: new Date().toISOString() }));
+  saveTasks([...existing, ...newTasks]);
+  renderCurrentTasks();
+}
+
+function markDone(id) {
+  const tasks = getTasks();
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  saveTasks(tasks.filter(t => t.id !== id));
+  const done = getDone();
+  done.unshift({ ...task, doneAt: new Date().toISOString() });
+  saveDone(done);
+  renderCurrentTasks();
+  renderDoneList();
+}
+
+function getNotNow() {
+  return JSON.parse(localStorage.getItem("notNowTasks") || "[]");
+}
+
+function saveNotNow(items) {
+  localStorage.setItem("notNowTasks", JSON.stringify(items));
+}
+
+function markNotNow(id) {
+  const tasks = getTasks();
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  saveTasks(tasks.filter(t => t.id !== id));
+  const notNow = getNotNow();
+  notNow.unshift({ ...task, snoozedAt: new Date().toISOString() });
+  saveNotNow(notNow);
+  renderCurrentTasks();
+  if (notNowVisible) renderNotNowList();
+}
+
+function restoreNotNow(id) {
+  const notNow = getNotNow();
+  const task = notNow.find(t => t.id === id);
+  if (!task) return;
+  saveNotNow(notNow.filter(t => t.id !== id));
+  const tasks = getTasks();
+  tasks.push({ id: task.id, text: task.text, added: task.added });
+  saveTasks(tasks);
+  renderCurrentTasks();
+  renderNotNowList();
+}
+
+let notNowVisible = false;
+function toggleNotNow() {
+  notNowVisible = !notNowVisible;
+  const el = document.getElementById("notNowList");
+  el.style.display = notNowVisible ? "block" : "none";
+  document.querySelector("[onclick='toggleNotNow()']").textContent = notNowVisible ? "Hide 'not now' items" : "Revow 'not now' items";
+  if (notNowVisible) renderNotNowList();
+}
+
+function renderNotNowList() {
+  const items = getNotNow();
+  const el = document.getElementById("notNowList");
+  el.innerHTML = "";
+  if (items.length === 0) {
+    el.innerHTML = '<div style="font-size:13px;opacity:0.4;margin-top:8px;">Nothing snoozed.</div>';
+    return;
+  }
+  items.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "action";
+
+    const span = document.createElement("span");
+    span.className = "action-text";
+    span.textContent = task.text;
+    span.style.opacity = "0.6";
+
+    const restore = document.createElement("span");
+    restore.className = "not-now";
+    restore.textContent = "revow";
+    restore.style.color = "#2d6cdf";
+    restore.style.opacity = "0.8";
+    restore.onclick = () => restoreNotNow(task.id);
+
+    div.appendChild(span);
+    div.appendChild(restore);
+    el.appendChild(div);
+  });
+}
+
+const TASK_VARIANTS = ['tv-a','tv-b','tv-c','tv-d','tv-e'];
+
+function variantFor(id, index) {
+  // deterministic but not sequential — uses task id hash + index
+  const hash = Math.abs(String(id).split('').reduce((a,c) => a + c.charCodeAt(0), 0));
+  return TASK_VARIANTS[(hash + index) % TASK_VARIANTS.length];
+}
+
+function renderCurrentTasks() {
+  const tasks = getTasks();
+  const el = document.getElementById("currentTasks");
+  const empty = document.getElementById("noCurrentTasks");
+  el.innerHTML = "";
+
+  if (tasks.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  tasks.forEach((task, i) => {
+    const div = document.createElement("div");
+    div.className = "task-card " + variantFor(task.id, i);
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.onchange = () => markDone(task.id);
+
+    const span = document.createElement("span");
+    span.className = "task-text";
+    span.textContent = task.text;
+
+    const nn = document.createElement("span");
+    nn.className = "not-now";
+    nn.textContent = "not now";
+    nn.onclick = () => markNotNow(task.id);
+
+    div.appendChild(cb);
+    div.appendChild(span);
+    div.appendChild(nn);
+    el.appendChild(div);
+  });
+}
+
+function renderDoneList() {
+  const done = getDone();
+  const el = document.getElementById("doneList");
+  el.innerHTML = "";
+  if (done.length === 0) {
+    el.innerHTML = '<div style="font-size:13px;opacity:0.4;margin-top:8px;">Nothing done yet.</div>';
+    return;
+  }
+  done.slice(0, 20).forEach(task => {
+    const div = document.createElement("div");
+    div.className = "done-item";
+    div.textContent = task.text;
+    const date = document.createElement("span");
+    date.className = "done-date";
+    date.textContent = new Date(task.doneAt).toLocaleString();
+    div.appendChild(date);
+    el.appendChild(div);
+  });
+}
+
+let doneVisible = false;
+function toggleDone() {
+  doneVisible = !doneVisible;
+  const el = document.getElementById("doneList");
+  el.style.display = doneVisible ? "block" : "none";
+  document.querySelector("[onclick='toggleDone()']").textContent = doneVisible ? "Hide done" : "View done";
+  if (doneVisible) renderDoneList();
+}
+
+function renderActions(actions) {
+  // Merge new actions into persistent current tasks list
+  addTasksFromActions(actions);
+}
+
+// ── API Key ──────────────────────────────────────────────────────────────────
+
+function getKey() {
+  return localStorage.getItem("anthropic_key") || "";
+}
+
+function saveKey() {
+  const key = document.getElementById("keyInput").value.trim();
+  if (!key.startsWith("sk-")) {
+    alert("That doesn't look right — key should start with sk-ant-...");
+    return;
+  }
+  localStorage.setItem("anthropic_key", key);
+  document.getElementById("keyScreen").style.display = "none";
+}
+
+function resetKey() {
+  localStorage.removeItem("anthropic_key");
+  document.getElementById("keyInput").value = "";
+  document.getElementById("keyScreen").style.display = "flex";
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+state = localStorage.getItem("state");
+
+if (!getKey()) {
+  document.getElementById("keyScreen").style.display = "flex";
+} else {
+  document.getElementById("keyScreen").style.display = "none";
+  if (state) {
+    document.body.className = 'mood-' + state;
+    document.querySelectorAll(".state").forEach(el => {
+      if (el.textContent.trim() === STATE_LABELS[state]) el.classList.add("active");
+    });
+    generateVisual();
+  }
+  const savedActions = JSON.parse(localStorage.getItem("actions") || "[]");
+  if (savedActions.length) renderActions(savedActions);
+  renderCurrentTasks();
+}
+
+</script>
+</body>
+</html>
