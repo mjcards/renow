@@ -501,8 +501,9 @@ No fluff, no cheerleading. Speak directly, like a trusted colleague.`;
       () => { el.classList.remove("stream-cursor"); }
     );
   } catch (err) {
-    el.classList.remove("stream-cursor");
     el.textContent = getFallbackVisual(state);
+  } finally {
+    el.classList.remove("stream-cursor");
   }
 }
 
@@ -542,16 +543,14 @@ function showNotes() {
 
 async function ingestNotes() {
   if (streaming) return;
+  streaming = true;
 
   const notes = JSON.parse(localStorage.getItem("notes") || "[]");
   const combined = notes.map(n => n.text).join("\n\n").trim();
 
-  const actionsEl = document.getElementById("actions");
   const btn = document.getElementById("ingestBtn");
-
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Thinking…';
-  actionsEl.innerHTML = "";
 
   const system = `You are a calm, practical productivity copilot helping someone re-enter focused work.
 Based on their mental state and brain-dump notes, generate 3-5 concrete, specific next actions.
@@ -569,13 +568,14 @@ Respond ONLY with a valid JSON array of strings. No markdown, no preamble. Examp
     localStorage.setItem("actions", JSON.stringify(actions));
     renderActions(actions);
   } catch (err) {
-    // fallback
+    console.error("ingestNotes error:", err);
     const fallback = getFallbackActions(state, combined);
     renderActions(fallback);
+  } finally {
+    streaming = false;
+    btn.disabled = false;
+    btn.textContent = "Turn into actions";
   }
-
-  btn.disabled = false;
-  btn.textContent = "Turn into actions";
 }
 
 function getFallbackActions(s, combined) {
