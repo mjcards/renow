@@ -553,10 +553,17 @@ async function ingestNotes() {
   btn.innerHTML = '<span class="spinner"></span>Thinking…';
 
   const system = `You are a calm, practical productivity copilot helping someone re-enter focused work.
-Based on their mental state and the note they just wrote, generate 3-5 concrete, specific next actions.
-Each action should be small and immediately doable — not a project, just the next physical step.
-Respond ONLY with a valid JSON array of strings. No markdown, no preamble. Example:
-["Reply to Sarah's message about the deadline","Open the project folder and read last saved note","Set a 10-minute timer and write one paragraph"]`;
+
+The user will give you their current mental state and a short note (a "dump") describing what's on their mind. Your job is to turn that dump into a to-do list.
+
+Rules:
+- Read the dump carefully and figure out how many distinct tasks or action items it actually contains. A single sentence describing one thing to do is ONE task — do not split it into multiple steps. If the dump lists several separate things, return one action per thing.
+- Each action should be a short, concrete, immediately-doable next step, phrased in the user's own terms where possible — don't invent extra sub-steps, prep work, or "first reset yourself" filler.
+- If the dump is empty or just venting with no actionable content, return exactly ONE gentle, state-appropriate next action (not multiple).
+- Never pad the list to reach a target count. Quality and accuracy of count matter more than list length.
+
+Respond ONLY with a valid JSON array of strings. No markdown, no preamble. Example for a dump containing two tasks:
+["Reply to Sarah's message about the deadline","Book the dentist appointment for next week"]`;
 
   const userParts = [
     `Current state: "${STATE_LABELS[state] || "unknown"}"`,
@@ -578,16 +585,17 @@ Respond ONLY with a valid JSON array of strings. No markdown, no preamble. Examp
   }
 }
 
-function getFallbackActions(s, combined) {
-  const actions = [];
-  if (s === "anxious") actions.push("Do a 2-minute reset (water / walk / breathe)");
-  if (s === "low")     actions.push("Stand up and do ONE physical action");
-  if (combined && (combined.includes("email") || combined.includes("reply")))
-    actions.push("Reply to ONE message (not all)");
-  if (combined && (combined.includes("work") || combined.includes("project")))
-    actions.push("Open project → define next step only");
-  if (s === "ready")   actions.push("Pick highest impact task and start 5-minute sprint");
-  return actions.length ? actions : ["Do the smallest possible useful thing"];
+function getFallbackActions(s, note) {
+  // Used only if the API call fails. Avoid padding/splitting — treat the
+  // dump as a single task if there is one, otherwise give one mood-based nudge.
+  if (note && note.trim()) {
+    return [note.trim()];
+  }
+  if (s === "anxious") return ["Do a 2-minute reset (water / walk / breathe)"];
+  if (s === "low")     return ["Stand up and do ONE physical action"];
+  if (s === "ready")   return ["Pick highest impact task and start a 5-minute sprint"];
+  if (s === "curious") return ["Jot down one thing you're curious about"];
+  return ["Do the smallest possible useful thing"];
 }
 
 // ── Task management ───────────────────────────────────────────────────────────
