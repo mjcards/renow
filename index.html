@@ -507,7 +507,17 @@ No fluff, no cheerleading. Speak directly, like a trusted colleague.`;
   }
 }
 
-function getFallbackVisual(s) {
+function nudgeMoodSelection() {
+  const visual = document.getElementById("visual");
+  visual.classList.remove("stream-cursor");
+  visual.textContent = "Pick how you're feeling above first — it shapes the kind of next steps you get.";
+  document.querySelector(".card").scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // brief highlight pulse on the mood card
+  const moodCard = document.querySelector(".card");
+  moodCard.style.boxShadow = "0 0 0 2px var(--accent, #2d6cdf)";
+  setTimeout(() => { moodCard.style.boxShadow = ""; }, 900);
+}
   if (s === "low")     return "Slow mode. One small action is enough.";
   if (s === "anxious") return "You're not behind—you're re-entering. One step only.";
   if (s === "ready")   return "High clarity window. Execute, don't plan.";
@@ -543,6 +553,12 @@ function showNotes() {
 
 async function ingestNotes() {
   if (streaming) return;
+
+  if (!state) {
+    nudgeMoodSelection();
+    return;
+  }
+
   streaming = true;
 
   const notes = JSON.parse(localStorage.getItem("notes") || "[]");
@@ -557,10 +573,16 @@ async function ingestNotes() {
 The user will give you their current mental state and a short note (a "dump") describing what's on their mind. Your job is to turn that dump into a to-do list.
 
 Rules:
-- Read the dump carefully and figure out how many distinct tasks or action items it actually contains. A single sentence describing one thing to do is ONE task — do not split it into multiple steps. If the dump lists several separate things, return one action per thing.
-- Each action should be a short, concrete, immediately-doable next step, phrased in the user's own terms where possible — don't invent extra sub-steps, prep work, or "first reset yourself" filler.
+- Read the dump carefully and figure out how many distinct tasks or action items it actually contains. A single sentence describing one thing to do is normally ONE task. If the dump lists several separate things, return one action per thing.
+- Each action should be a short, concrete, immediately-doable next step, phrased in the user's own terms where possible.
 - If the dump is empty or just venting with no actionable content, return exactly ONE gentle, state-appropriate next action (not multiple).
 - Never pad the list to reach a target count. Quality and accuracy of count matter more than list length.
+
+Adjust granularity based on the user's current state:
+- "Ready to get things done": Keep tasks substantive — the real next step that actually moves the work forward. Do NOT break a single real task into warm-up or prep sub-steps; give them the actual thing to do.
+- "Behind / anxious": It's OK to break a task into one smaller, lower-stakes first piece if it reduces overwhelm — but still just the next concrete step, not a full plan.
+- "Low energy": Break tasks down into the smallest possible first action — something that takes under 2 minutes and lowers the barrier to starting.
+- "Curious / exploring": Frame as light, exploratory first steps — it's fine to suggest just looking at or opening something, no pressure to complete it.
 
 Respond ONLY with a valid JSON array of strings. No markdown, no preamble. Example for a dump containing two tasks:
 ["Reply to Sarah's message about the deadline","Book the dentist appointment for next week"]`;
@@ -621,7 +643,7 @@ function addTasksFromActions(actions) {
   const existingTexts = existing.map(t => t.text);
   const newTasks = actions
     .filter(a => !existingTexts.includes(a))
-    .map(a => ({ id: Date.now() + Math.random(), text: a, added: new Date().toISOString() }));
+    .map(a => ({ id: Date.now() + Math.random(), text: a, added: new Date().toISOString(), mood: state || null }));
   saveTasks([...existing, ...newTasks]);
   renderCurrentTasks();
 }
@@ -811,21 +833,16 @@ function resetKey() {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
-state = localStorage.getItem("state");
+// Note: we deliberately do NOT restore the previous session's mood here.
+// Picking a mood is the "re-entry" ritual itself — each session starts fresh.
+// state stays null until the user taps one of the mood buttons.
+state = null;
 
 if (!getKey()) {
   document.getElementById("keyScreen").style.display = "flex";
 } else {
   document.getElementById("keyScreen").style.display = "none";
-  if (state) {
-    document.body.className = 'mood-' + state;
-    document.querySelectorAll(".state").forEach(el => {
-      if (el.textContent.trim() === STATE_LABELS[state]) el.classList.add("active");
-    });
-    generateVisual();
-  }
-  const savedActions = JSON.parse(localStorage.getItem("actions") || "[]");
-  if (savedActions.length) renderActions(savedActions);
+  // Task list, done list, not-now list, and notes all persist regardless of mood.
   renderCurrentTasks();
 }
 
