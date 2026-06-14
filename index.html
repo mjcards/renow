@@ -518,6 +518,7 @@ function nudgeMoodSelection() {
   moodCard.style.boxShadow = "0 0 0 2px var(--accent, #2d6cdf)";
   setTimeout(() => { moodCard.style.boxShadow = ""; }, 900);
 }
+function getFallbackVisual(s) {
   if (s === "low")     return "Slow mode. One small action is enough.";
   if (s === "anxious") return "You're not behind—you're re-entering. One step only.";
   if (s === "ready")   return "High clarity window. Execute, don't plan.";
